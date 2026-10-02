@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DocumentMeta } from "@/lib/db";
+import AnalysisPanel from "@/components/AnalysisPanel";
+import PaperList from "@/components/PaperList";
 
 const ACCEPT = "image/png,image/jpeg,image/gif,image/webp,image/avif,application/pdf";
 
@@ -17,6 +19,8 @@ export default function Uploader() {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"preview" | "analysis">("preview");
+  const [view, setView] = useState<"files" | "papers">("files");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -60,7 +64,7 @@ export default function Uploader() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+    <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
       <section className="flex flex-col gap-4">
         <div
           role="button"
@@ -106,49 +110,106 @@ export default function Uploader() {
           </p>
         )}
 
-        <ul className="flex flex-col gap-1">
-          {files.map((f) => (
-            <li key={f.id}>
-              <div
-                className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
-                  selected?.id === f.id
-                    ? "bg-zinc-200 dark:bg-zinc-800"
-                    : "hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                }`}
-              >
-                <button onClick={() => setSelected(f)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                  <span className="shrink-0 rounded bg-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold uppercase dark:bg-zinc-700">
-                    {f.mimeType === "application/pdf" ? "PDF" : "IMG"}
-                  </span>
-                  <span className="truncate">{f.filename}</span>
-                  <span className="ml-auto shrink-0 text-xs text-zinc-500">{formatSize(f.sizeBytes)}</span>
-                </button>
-                <button
-                  onClick={() => remove(f)}
-                  aria-label={`Eliminar ${f.filename}`}
-                  className="text-zinc-400 opacity-0 hover:text-red-600 group-hover:opacity-100 focus:opacity-100"
-                >
-                  ✕
-                </button>
-              </div>
-            </li>
+        <nav className="flex rounded-lg bg-zinc-100 p-1 text-sm dark:bg-zinc-900">
+          {(["files", "papers"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`flex-1 rounded-md px-3 py-1.5 font-medium ${
+                view === v
+                  ? "bg-white shadow-sm dark:bg-zinc-700"
+                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              }`}
+            >
+              {v === "files" ? "Archivos" : "Papers indexados"}
+            </button>
           ))}
-        </ul>
+        </nav>
+
+        {view === "papers" ? (
+          <PaperList
+            selectedId={selected?.id ?? null}
+            onSelect={(id) => {
+              const doc = files.find((f) => f.id === id);
+              if (!doc) return;
+              setSelected(doc);
+              setTab("analysis");
+            }}
+          />
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {files.map((f) => (
+              <li key={f.id}>
+                <div
+                  className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
+                    selected?.id === f.id
+                      ? "bg-zinc-200 dark:bg-zinc-800"
+                      : "hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                  }`}
+                >
+                  <button onClick={() => setSelected(f)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                    <span className="shrink-0 rounded bg-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold uppercase dark:bg-zinc-700">
+                      {f.mimeType === "application/pdf" ? "PDF" : "IMG"}
+                    </span>
+                    <span className="truncate">{f.filename}</span>
+                    <span className="ml-auto shrink-0 text-xs text-zinc-500">{formatSize(f.sizeBytes)}</span>
+                  </button>
+                  <button
+                    onClick={() => remove(f)}
+                    aria-label={`Eliminar ${f.filename}`}
+                    className="text-zinc-400 opacity-0 hover:text-red-600 group-hover:opacity-100 focus:opacity-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
-      <section className="flex min-h-[70vh] items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="flex h-[85vh] flex-col overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
         {!selected ? (
-          <p className="text-zinc-500">Sube un archivo para ver la vista previa</p>
-        ) : selected.mimeType === "application/pdf" ? (
-          <iframe key={selected.id} src={`/api/files/${selected.id}`} title={selected.filename} className="h-[80vh] w-full" />
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-zinc-500">Sube un archivo para ver la vista previa</p>
+          </div>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={selected.id}
-            src={`/api/files/${selected.id}`}
-            alt={selected.filename}
-            className="max-h-[80vh] max-w-full object-contain p-4"
-          />
+          <>
+            <nav className="flex gap-1 border-b border-zinc-200 px-2 pt-2 dark:border-zinc-800">
+              {(["preview", "analysis"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`rounded-t-lg px-4 py-2 text-sm font-medium ${
+                    tab === t
+                      ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  {t === "preview" ? "Vista previa" : "Análisis"}
+                </button>
+              ))}
+            </nav>
+            {tab === "preview" ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                {selected.mimeType === "application/pdf" ? (
+                  <iframe key={selected.id} src={`/api/files/${selected.id}`} title={selected.filename} className="h-full w-full" />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={selected.id}
+                    src={`/api/files/${selected.id}`}
+                    alt={selected.filename}
+                    className="max-h-full max-w-full object-contain p-4"
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <AnalysisPanel key={selected.id} doc={selected} />
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

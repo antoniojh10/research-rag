@@ -16,3 +16,15 @@ export type DocumentMeta = {
   sizeBytes: number;
   createdAt: string;
 };
+
+/** A paper whose text and figures are embedded in pgvector. */
+export type IndexedPaper = {
+  id: string;
+  filename: string;
+  title: string | null;
+  authors: string[];
+  pageCount: number;
+  textChunks: number;
+  figureChunks: number;
+  indexedAt: string;
+};
